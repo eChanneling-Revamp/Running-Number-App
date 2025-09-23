@@ -1,8 +1,8 @@
-// src/pages/api/queue/addPatient.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@/lib/mongodb";
 
 interface Patient {
+  _id: string;
   name: string;
   age: number;
   gender: string;
@@ -16,8 +16,8 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Only POST requests allowed" });
+  if (req.method !== "GET") {
+    return res.status(405).json({ message: "Only GET requests allowed" });
   }
 
   try {
@@ -25,19 +25,13 @@ export default async function handler(
     const db = client.db(process.env.DB_NAME);
     const collection = db.collection<Patient>("patients");
 
-    const patient: Patient = {
-      ...req.body,
-      createdAt: new Date(),
-    };
+    // Fetch all patients sorted by creation date (newest first)
+    const patients = await collection.find().sort({ createdAt: -1 }).toArray();
 
-    const result = await collection.insertOne(patient);
-
-    res
-      .status(201)
-      .json({ message: "Patient added", patientId: result.insertedId });
+    res.status(200).json(patients);
   } catch (error: unknown) {
     if (error instanceof Error) {
-      res.status(500).json({ message: "Failed to add patient", error: error.message });
+      res.status(500).json({ message: "Failed to fetch patients", error: error.message });
     } else {
       res.status(500).json({ message: "Unknown error occurred" });
     }
